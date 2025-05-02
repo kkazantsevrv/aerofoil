@@ -90,27 +90,28 @@ std::vector<double> CubicSpline::sinta(){
     for(size_t i=0; i<_x.size()-1; i++){
         ls[i+1]+= ls[i];
     }
+    for(size_t i=0; i<_x.size(); i++){
+        ls[i+1]*=-1;
+    }
     return ls;
 }
 
 double CubicSpline::sintall(){
     std::vector<double> ls = this->sinta();
-    double sum = 0;
-    for(size_t i=0; i<ls.size(); i++){
-        sum+= ls[i];
-    }
-    return sum;
+    return ls[ls.size()-1];
 }
 
 double CubicSpline::spl(const double& xx){
     size_t ixx;
     for(size_t i=0; i<_x.size()-1;i++){
-        if(xx > _x[i]-(double)1e-15 && xx < _x[i+1]+(double)1e-15){
+        if(xx > _x[i]-(double)1e-12 && xx < _x[i+1]+(double)1e-12){
             ixx = i;
             break;
         }
     }
-
+    if (xx < _x[0] || xx > _x.back()) {
+        throw std::out_of_range("xx is outside the spline domain");
+    }
     double Ci = _M[ixx]*(_x[ixx+1]-xx)*(_x[ixx+1]-xx)*(_x[ixx+1]-xx)/(double)6.0/_h[ixx] - 
         _M[ixx+1]*(_x[ixx]-xx)*(_x[ixx]-xx)*(_x[ixx]-xx)/(double)6.0/_h[ixx] + 
         (_y[ixx] - _M[ixx]*_h[ixx]*_h[ixx]/(double)6.0)*(_x[ixx+1]-xx)/_h[ixx] 

@@ -26,6 +26,7 @@ public:
     std::vector<double> sinta();
     double sintall();
     double spl(const double& point);
+    std::vector<double> getx() {return _x;};
     
     ~CubicSpline() = default;
 private:

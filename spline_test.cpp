@@ -9,4 +9,5 @@ int main(){
     auto spl = CubicSpline(x, y);
     spl.assemble();
     print(spl.sinta());
+    std::cout << spl.spl(0) << std::endl;
 }
