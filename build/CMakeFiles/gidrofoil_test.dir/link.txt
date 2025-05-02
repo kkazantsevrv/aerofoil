@@ -1,0 +1,1 @@
+/usr/bin/c++ -rdynamic CMakeFiles/gidrofoil_test.dir/gidrofoil_test.cpp.o -o gidrofoil_test  libspline_lib.a

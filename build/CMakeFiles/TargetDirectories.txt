@@ -1,0 +1,4 @@
+/home/ramzan/projects/works/IBP/build/CMakeFiles/spline_lib.dir
+/home/ramzan/projects/works/IBP/build/CMakeFiles/gidrofoil_test.dir
+/home/ramzan/projects/works/IBP/build/CMakeFiles/edit_cache.dir
+/home/ramzan/projects/works/IBP/build/CMakeFiles/rebuild_cache.dir

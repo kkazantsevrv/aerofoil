@@ -1,0 +1,1 @@
+/usr/bin/c++ -rdynamic CMakeFiles/spline.hpp.dir/gidrofoil_test.cpp.o -o spline.hpp
