@@ -10,6 +10,8 @@
 #include "plot.hpp"
 #include <fstream>
 #include <string>
+#include <complex>
+
 constexpr double pi = acos(-1.0);
 
 void print_f(std::string filename, std::vector<double> x, std::vector<double> y){
@@ -38,10 +40,11 @@ std::vector<double> set_grid(size_t _n_points, double l, double r){
 }
 class Aerofoil{
 public:
-    Aerofoil(size_t n, double l=0.0, double r=1.0);
+    Aerofoil(double vinf, size_t n, double l=0.0, double r=1.0);
     void step();
 private:
     size_t _n_points;
+    double _vinf;
     double _sa;
     std::vector<double> _s;
     std::vector<double> _gam;
@@ -49,6 +52,11 @@ private:
     std::vector<double> _fi;
     std::vector<double> _gams;
     std::vector<double> _vgam;
+    std::vector<double> _S_wave;
+    std::vector<double> _S1_wave;
+    std::vector<double> _theta;
+    std::vector<double> _x;
+    std::vector<double> _y;
 
     CubicSpline _vs_spl;
     CubicSpline _vgam_spl;
@@ -63,15 +71,26 @@ private:
     void compute_params();
     void compute_gams();
     void compute_vgam();
+    void compute_S();
+    void compute_S1();
+    void compute_theta();
+    void compute_xy();
 };
 
-Aerofoil::Aerofoil(size_t n, double l, double r){
+Aerofoil::Aerofoil(double vinf, size_t n, double l, double r): _vinf(vinf){
     _n_points = n;
+
     _s = std::vector<double>(_n_points, 0.0);
     _v = std::vector<double>(_n_points, 0.0);
     _fi = std::vector<double>(_n_points, 0.0);
     _gams = std::vector<double>(_n_points, 0.0);
     _vgam = std::vector<double>(_n_points, 0.0);
+    _S_wave = std::vector<double>(_n_points, 0.0);
+    _S1_wave = std::vector<double>(_n_points, 0.0);
+    _theta = std::vector<double>(_n_points, 0.0);
+    _x = std::vector<double>(_n_points, 0.0);
+    _y = std::vector<double>(_n_points, 0.0);
+
     _s = set_grid(_n_points, l, r);
     _gam = set_grid(_n_points, 0.0, 2.0*pi);
     _v = set_v(_s);
@@ -193,16 +212,90 @@ void Aerofoil::compute_vgam(){
     //print_f("dat.dat", _gam, _vgam);
 }
 
+void Aerofoil::compute_S(){
+    for(size_t i=0; i<_n_points; i++){
+        _S_wave[i] = log(std::abs(_vgam[i])) - log(std::abs(2.0*sin((_gam[i] - _gamma_a)/2.0)));
+    }
+    for(size_t i=1; i<_n_points-1; i++){
+        if(std::abs(_gam[i]-_gamma_a) < 1e-9){
+            _S_wave[i] = (_S_wave[i-1] + _S_wave[i+1])/2.0;
+        }
+    }
+    //print_f("dat.dat", _gam, _S_wave);
+}
+
+void Aerofoil::compute_S1(){
+    double A1 = 2.0*pi*log(_vinf);
+    double A2 = -pi;
+    double A3 = 0.0;
+    double mu1;
+    double mu2;
+    double mu3;
+
+    std::vector<double> S(_S_wave);
+    auto spl = CubicSpline(_gam, S);
+    spl.assemble();
+    mu1 = 1.0/2.0/pi*(spl.sintall() - A1);
+    for(size_t i=0; i<_n_points; i++){
+        S[i] = _S_wave[i]*cos(_gam[i]);
+    }
+    spl = CubicSpline(_gam, S);
+    spl.assemble();
+    mu2 = 1.0/pi*(spl.sintall() - A2);
+    for(size_t i=0; i<_n_points; i++){
+        S[i] = _S_wave[i]*sin(_gam[i]);
+    }
+    spl = CubicSpline(_gam, S);
+    spl.assemble();
+    mu3 = 1.0/pi*(spl.sintall() - A3);
+
+    for(size_t i=0; i<_n_points; i++){
+        _S1_wave[i] = _S_wave[i] - (mu1 + mu2*cos(_gam[i]) + mu3*sin(_gam[i]));
+    }
+}
+
+void Aerofoil::compute_theta(){
+    _theta = hilbert(_S1_wave, _gam);
+    //print_f("dat.dat", _gam, _theta);
+}
+
+void Aerofoil::compute_xy(){
+    std::vector<std::complex<double>> f1(_n_points);
+    for(size_t i=0; i<_n_points; i++){
+        const std::complex<double> I(0.0, 1.0);
+        f1[i] = I * _u0
+                * std::exp(-I * _beta)
+                * (std::exp(I * _gam[i]) - 1.0)
+                * std::exp(-_S1_wave[i] - I * _theta[i]);
+    }
+    std::vector<double> ref1(_n_points);
+    std::vector<double> imf1(_n_points);
+    for(size_t i=0; i<_n_points; i++){
+        ref1[i] = f1[i].real();
+        imf1[i] = f1[i].imag();
+    }
+    auto spl = CubicSpline(_gam, ref1);
+    spl.assemble();
+    _x = spl.sinta();
+    spl = CubicSpline(_gam, imf1);
+    spl.assemble();
+    _y = spl.sinta();
+    print_f("dat.dat", _x, _y);
+}
+
 void Aerofoil::step(){
     compute_fi();
     compute_params();
     compute_gams();
     compute_vgam();
+    compute_S();
+    compute_S1();
+    compute_theta();
+    compute_xy();
 }
-
 
 int main(){
    std::cout << " aaaaa " << std::endl;
-   Aerofoil aero_test(200, 0, 1);
+   Aerofoil aero_test(1.0, 1000, 0, 1);
    aero_test.step();
 }

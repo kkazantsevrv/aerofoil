@@ -56,3 +56,27 @@ double newton(
     }
     return x;
 }
+
+std::vector<double> hilbert(const std::vector<double>& y, const std::vector<double>& x){
+    std::vector<double> x2(x.size()-1, 0.0);
+    std::vector<double> h(x.size()-1, 0.0);
+    std::vector<double> res(x.size(), 0.0);
+    for(size_t i=0; i<x.size()-1; i++){
+        x2[i] = (x[i] + x[i+1])/2.0;
+        h[i] = x[i+1] - x[i];
+    }
+    auto spl = CubicSpline(x, y);
+    spl.assemble();
+    std::vector<double> y2(x.size()-1, 0.0);
+    for(size_t i=0; i<x.size()-1; i++){
+        y2[i] = spl.spl(x2[i]);
+    }
+    for(size_t i=0; i<x.size(); i++){
+        double sum = 0;
+        for(size_t j=0; j<x.size()-1; j++){
+            sum+= 1.0/2.0/acos(-1.0)*y2[j]/tan((x2[j]-x[i])/2.0)*h[i];
+        }
+        res[i] = sum;
+    }
+    return res;
+}
